@@ -8,12 +8,13 @@ import { PremiumBanner } from '@/components/premium/PremiumBanner';
 import { CategoryList } from '@/components/categories/CategoryList';
 import { TelegramCTA } from '@/components/cta/TelegramCTA';
 import { ArticleCard } from '@/components/articles/ArticleCard';
+import { ArticleDetailModal } from '@/components/articles/ArticleDetailModal';
 import { PremiumModal } from '@/components/profile/PremiumModal';
 import { WelcomeModal, useWelcomeModal } from '@/components/welcome/WelcomeModal';
 import { AIAssistantSection } from '@/components/ai/AIAssistantSection';
 import { Skeleton } from '@/components/ui/skeleton';
 import { mockCategories } from '@/data/mockData';
-import { Category } from '@/types';
+import { Category, Article as ArticleType } from '@/types';
 import { useProfile } from '@/hooks/use-profile';
 import { useArticles, Article } from '@/hooks/use-articles';
 
@@ -25,6 +26,48 @@ export default function Index() {
   const { showWelcome, closeWelcome } = useWelcomeModal();
   const [articles, setArticles] = useState<Article[]>([]);
   const [articlesLoading, setArticlesLoading] = useState(true);
+  const [selectedArticle, setSelectedArticle] = useState<ArticleType | null>(null);
+  const [isArticleDetailOpen, setIsArticleDetailOpen] = useState(false);
+
+  const handleArticleClick = (article: Article) => {
+    // Convert to ArticleType for the modal
+    const articleForModal: ArticleType = {
+      id: article.id,
+      author_id: article.author_id || '',
+      author: article.author && !article.is_anonymous ? {
+        id: article.author.id,
+        telegram_id: 0,
+        username: article.author.username || '',
+        first_name: article.author.first_name || '',
+        last_name: article.author.last_name || undefined,
+        avatar_url: article.author.avatar_url || undefined,
+        reputation: article.author.reputation || 0,
+        articles_count: 0,
+        is_premium: article.author.is_premium || false,
+        created_at: article.author.created_at || '',
+      } : undefined,
+      category_id: article.category_id || '',
+      topic_id: '',
+      topic: article.topic || undefined,
+      title: article.title,
+      preview: article.preview || '',
+      body: article.body,
+      media_url: article.media_url || undefined,
+      media_type: article.media_type as 'image' | 'youtube' | undefined,
+      is_anonymous: article.is_anonymous || false,
+      status: (article.status || 'pending') as 'draft' | 'pending' | 'approved' | 'rejected',
+      likes_count: article.likes_count || 0,
+      comments_count: article.comments_count || 0,
+      favorites_count: article.favorites_count || 0,
+      rep_score: article.rep_score || 0,
+      allow_comments: article.allow_comments !== false,
+      sources: article.sources || undefined,
+      created_at: article.created_at || '',
+      updated_at: article.updated_at || '',
+    };
+    setSelectedArticle(articleForModal);
+    setIsArticleDetailOpen(true);
+  };
 
   // Load articles
   useEffect(() => {
@@ -165,6 +208,7 @@ export default function Index() {
               author: (a.is_anonymous && !isAdmin) ? undefined : getAuthorDisplay(a.author),
               category_id: a.category_id || '',
               topic_id: '',
+              topic: a.topic || undefined,
               title: a.title,
               preview: a.preview || '',
               body: a.body,
@@ -177,9 +221,15 @@ export default function Index() {
               favorites_count: a.favorites_count || 0,
               rep_score: a.rep_score || 0,
               allow_comments: a.allow_comments !== false,
+              sources: a.sources || undefined,
               created_at: a.created_at || '',
               updated_at: a.updated_at || '',
             }))}
+            onArticleClick={(a) => {
+              // Convert types for modal
+              setSelectedArticle(a);
+              setIsArticleDetailOpen(true);
+            }}
             className="mb-8"
           />
         ) : null;
@@ -226,12 +276,14 @@ export default function Index() {
               {filteredArticles.map((article, index) => (
                 <ArticleCard
                   key={article.id}
+                  onClick={() => handleArticleClick(article)}
                   article={{
                     id: article.id,
                     author_id: article.author_id || '',
                     author: (article.is_anonymous && !isAdmin) ? undefined : getAuthorDisplay(article.author),
                     category_id: article.category_id || '',
                     topic_id: '',
+                    topic: article.topic || undefined,
                     title: article.title,
                     preview: article.preview || '',
                     body: article.body,
@@ -244,6 +296,7 @@ export default function Index() {
                     favorites_count: article.favorites_count || 0,
                     rep_score: article.rep_score || 0,
                     allow_comments: article.allow_comments !== false,
+                    sources: article.sources || undefined,
                     created_at: article.created_at || '',
                     updated_at: article.updated_at || '',
                   }}
@@ -267,6 +320,12 @@ export default function Index() {
       <BottomNav />
       
       <PremiumModal isOpen={isPremiumOpen} onClose={() => setIsPremiumOpen(false)} />
+      
+      <ArticleDetailModal
+        isOpen={isArticleDetailOpen}
+        onClose={() => setIsArticleDetailOpen(false)}
+        article={selectedArticle}
+      />
       
       {showWelcome && <WelcomeModal onClose={closeWelcome} />}
     </div>

@@ -7,9 +7,10 @@ interface ArticleCarouselProps {
   title: string;
   articles: Article[];
   className?: string;
+  onArticleClick?: (article: Article) => void;
 }
 
-export function ArticleCarousel({ title, articles, className }: ArticleCarouselProps) {
+export function ArticleCarousel({ title, articles, className, onArticleClick }: ArticleCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -25,6 +26,7 @@ export function ArticleCarousel({ title, articles, className }: ArticleCarouselP
               article={article}
               className="animate-slide-up"
               style={{ animationDelay: `${index * 100}ms` }}
+              onClick={() => onArticleClick?.(article)}
             />
           ))}
         </div>

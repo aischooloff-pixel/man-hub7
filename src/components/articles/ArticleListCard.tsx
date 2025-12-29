@@ -65,7 +65,7 @@ export function ArticleListCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="truncate font-medium text-foreground group-hover:text-primary transition-colors">
-                {article.title}
+              {article.topic || article.title}
               </h3>
               {getStatusBadge()}
             </div>

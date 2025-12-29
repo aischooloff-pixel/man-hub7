@@ -117,14 +117,20 @@ export function CreateArticleModal({ isOpen, onClose, onSuccess }: CreateArticle
       return;
     }
 
+    const sourcesArray = formData.sources.trim() 
+      ? formData.sources.split(',').map(s => s.trim()).filter(Boolean)
+      : undefined;
+
     const article = await createArticle({
       category_id: formData.category_id,
       title: formData.title.trim(),
+      topic: formData.topic.trim() || undefined,
       body: formData.body.trim(),
       media_url: formData.media_url.trim() || undefined,
       media_type: mediaType || undefined,
       is_anonymous: formData.is_anonymous,
       allow_comments: true,
+      sources: sourcesArray,
     });
 
     if (article) {
@@ -239,15 +245,23 @@ export function CreateArticleModal({ isOpen, onClose, onSuccess }: CreateArticle
                 </Button>
               </div>
             ) : (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Image className="h-4 w-4" />
-                Добавить медиа
-              </Button>
+              <div className="flex gap-2">
+                <Input
+                  value={formData.media_url}
+                  onChange={(e) => handleMediaUrlChange(e.target.value)}
+                  placeholder="Вставьте ссылку на видео YouTube"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Загрузить изображение"
+                >
+                  <Image className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </div>
 

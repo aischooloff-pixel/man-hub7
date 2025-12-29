@@ -1950,6 +1950,141 @@ async function handleRejectionReason(chatId: number, userId: number, text: strin
   return true;
 }
 
+// Handle edit approve callback
+async function handleEditApprove(callbackQuery: any, shortId: string) {
+  const { id, message, from } = callbackQuery;
+
+  const articleId = await getArticleIdByShortId(shortId);
+  if (!articleId) {
+    await answerCallbackQuery(id, '❌ Статья не найдена');
+    return;
+  }
+
+  // Get article with pending edit
+  const { data: article, error: aErr } = await supabase
+    .from('articles')
+    .select('id, title, pending_edit, author:author_id(telegram_id, username)')
+    .eq('id', articleId)
+    .maybeSingle();
+
+  if (aErr || !article || !article.pending_edit) {
+    await answerCallbackQuery(id, '❌ Редактирование не найдено');
+    return;
+  }
+
+  const pendingEdit = article.pending_edit as any;
+
+  // Apply the edit
+  const { error: updateErr } = await supabase
+    .from('articles')
+    .update({
+      title: pendingEdit.title || article.title,
+      topic: pendingEdit.topic,
+      body: pendingEdit.body,
+      media_url: pendingEdit.media_url,
+      is_anonymous: pendingEdit.is_anonymous,
+      sources: pendingEdit.sources,
+      pending_edit: null,
+      edited_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', articleId);
+
+  if (updateErr) {
+    console.error('Error applying edit:', updateErr);
+    await answerCallbackQuery(id, '❌ Ошибка при применении редактирования');
+    return;
+  }
+
+  const authorData = article.author as any;
+
+  // Log moderation action
+  await supabase.from('moderation_logs').insert({
+    article_id: articleId,
+    moderator_telegram_id: from.id,
+    action: 'edit_approved',
+  });
+
+  // Notify author
+  if (authorData?.telegram_id) {
+    await sendUserMessage(
+      authorData.telegram_id,
+      `✅ <b>Редактирование одобрено!</b>
+
+📝 "${article.title}"
+
+Ваши изменения применены и опубликованы.`
+    );
+  }
+
+  await answerCallbackQuery(id, '✅ Редактирование одобрено');
+  await editMessageReplyMarkup(message.chat.id, message.message_id);
+  await sendAdminMessage(message.chat.id, `✅ Редактирование статьи "${article.title}" одобрено`);
+}
+
+// Handle edit reject callback
+async function handleEditReject(callbackQuery: any, shortId: string) {
+  const { id, message, from } = callbackQuery;
+
+  const articleId = await getArticleIdByShortId(shortId);
+  if (!articleId) {
+    await answerCallbackQuery(id, '❌ Статья не найдена');
+    return;
+  }
+
+  // Clear pending edit without applying
+  const { data: article, error: aErr } = await supabase
+    .from('articles')
+    .select('id, title, author:author_id(telegram_id)')
+    .eq('id', articleId)
+    .maybeSingle();
+
+  if (aErr || !article) {
+    await answerCallbackQuery(id, '❌ Статья не найдена');
+    return;
+  }
+
+  // Clear pending edit
+  const { error: updateErr } = await supabase
+    .from('articles')
+    .update({
+      pending_edit: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', articleId);
+
+  if (updateErr) {
+    console.error('Error rejecting edit:', updateErr);
+    await answerCallbackQuery(id, '❌ Ошибка');
+    return;
+  }
+
+  const authorData = article.author as any;
+
+  // Log moderation action
+  await supabase.from('moderation_logs').insert({
+    article_id: articleId,
+    moderator_telegram_id: from.id,
+    action: 'edit_rejected',
+  });
+
+  // Notify author
+  if (authorData?.telegram_id) {
+    await sendUserMessage(
+      authorData.telegram_id,
+      `❌ <b>Редактирование отклонено</b>
+
+📝 "${article.title}"
+
+Ваши изменения не были применены. Вы можете попробовать ещё раз.`
+    );
+  }
+
+  await answerCallbackQuery(id, '❌ Редактирование отклонено');
+  await editMessageReplyMarkup(message.chat.id, message.message_id);
+  await sendAdminMessage(message.chat.id, `❌ Редактирование статьи "${article.title}" отклонено`);
+}
+
 // Handle callback queries
 async function handleCallbackQuery(callbackQuery: any) {
   const { data, from, message } = callbackQuery;
@@ -2018,6 +2153,10 @@ async function handleCallbackQuery(callbackQuery: any) {
   } else if (action === 'pl_back') {
     await answerCallbackQuery(callbackQuery.id);
     await handlePlaylists(message.chat.id, from.id);
+  } else if (action === 'edit_approve') {
+    await handleEditApprove(callbackQuery, param);
+  } else if (action === 'edit_reject') {
+    await handleEditReject(callbackQuery, param);
   }
 }
 

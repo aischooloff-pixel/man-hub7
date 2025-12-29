@@ -8,16 +8,18 @@ interface ArticleCardProps {
   variant?: 'default' | 'compact' | 'featured';
   className?: string;
   style?: React.CSSProperties;
+  onClick?: () => void;
 }
 
-export function ArticleCard({ article, variant = 'default', className, style }: ArticleCardProps) {
+export function ArticleCard({ article, variant = 'default', className, style, onClick }: ArticleCardProps) {
   const author = article.is_anonymous ? null : article.author;
 
   if (variant === 'featured') {
     return (
       <article
+        onClick={onClick}
         className={cn(
-          'group relative flex h-[320px] w-[280px] flex-shrink-0 flex-col overflow-hidden rounded-lg bg-card transition-smooth hover:bg-card-elevated',
+          'group relative flex h-[320px] w-[280px] flex-shrink-0 flex-col overflow-hidden rounded-lg bg-card transition-smooth hover:bg-card-elevated cursor-pointer',
           'shadow-card hover:shadow-elevated',
           className
         )}
@@ -58,7 +60,7 @@ export function ArticleCard({ article, variant = 'default', className, style }: 
           </div>
 
           <h3 className="mb-2 line-clamp-2 font-heading text-sm font-semibold leading-tight">
-            {article.title}
+            {article.topic || article.title}
           </h3>
           
           <p className="mb-auto line-clamp-2 text-xs text-muted-foreground">
@@ -87,8 +89,9 @@ export function ArticleCard({ article, variant = 'default', className, style }: 
   if (variant === 'compact') {
     return (
       <article
+        onClick={onClick}
         className={cn(
-          'group flex gap-4 rounded-lg bg-card p-4 transition-smooth hover:bg-card-elevated',
+          'group flex gap-4 rounded-lg bg-card p-4 transition-smooth hover:bg-card-elevated cursor-pointer',
           className
         )}
         style={style}
@@ -127,8 +130,9 @@ export function ArticleCard({ article, variant = 'default', className, style }: 
 
   return (
     <article
+      onClick={onClick}
       className={cn(
-        'group overflow-hidden rounded-lg bg-card transition-smooth hover:bg-card-elevated shadow-card',
+        'group overflow-hidden rounded-lg bg-card transition-smooth hover:bg-card-elevated shadow-card cursor-pointer',
         className
       )}
       style={style}
@@ -177,7 +181,7 @@ export function ArticleCard({ article, variant = 'default', className, style }: 
         </div>
 
         <h3 className="mb-2 font-heading text-lg font-semibold leading-tight">
-          {article.title}
+          {article.topic || article.title}
         </h3>
         
         <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">

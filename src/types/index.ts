@@ -33,6 +33,7 @@ export interface Article {
   author?: User;
   category_id: string;
   topic_id: string;
+  topic?: string;
   title: string;
   preview: string;
   body: string;
