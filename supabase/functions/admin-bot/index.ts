@@ -2326,6 +2326,8 @@ async function handleCallbackQuery(callbackQuery: any) {
     await handleReviewReject(callbackQuery, param);
   } else if (action === 'review_delete') {
     await handleReviewDelete(callbackQuery, param);
+  } else if (action === 'review_search_delete') {
+    await handleReviewSearchDelete(callbackQuery, param);
   }
 }
 
@@ -2611,6 +2613,25 @@ async function handleReviewDelete(callbackQuery: any, reviewId: string) {
   await handleReviews(message.chat.id, from.id, 0, message.message_id);
 }
 
+// Handle review delete from search results
+async function handleReviewSearchDelete(callbackQuery: any, reviewId: string) {
+  const { id, message } = callbackQuery;
+
+  const { error } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', reviewId);
+
+  if (error) {
+    console.error('Error deleting review from search:', error);
+    await answerCallbackQuery(id, '❌ Ошибка удаления');
+    return;
+  }
+
+  await answerCallbackQuery(id, '🗑 Отзыв удалён');
+  await deleteMessage(message.chat.id, message.message_id);
+}
+
 // Handle /search_otz command
 async function handleSearchReviews(chatId: number, userId: number, query: string) {
   if (!isAdmin(userId)) return;
@@ -2646,7 +2667,8 @@ async function handleSearchReviews(chatId: number, userId: number, query: string
     return;
   }
 
-  let message = `🔍 <b>Найдено отзывов: ${reviews.length}</b>\n\n`;
+  // Send each review as a separate message with delete button
+  await sendAdminMessage(chatId, `🔍 <b>Найдено отзывов: ${reviews.length}</b>`);
 
   for (const review of reviews) {
     const user = review.user as any;
@@ -2654,16 +2676,21 @@ async function handleSearchReviews(chatId: number, userId: number, query: string
     const statusIcon = review.status === 'pending' ? '⏳' : review.status === 'approved' ? '✅' : '❌';
     const authorDisplay = user?.username ? `@${user.username}` : user?.first_name || `ID:${user?.telegram_id}`;
     
-    message += `${statusIcon} ${stars} (${review.rating}/5)\n`;
+    let message = `${statusIcon} ${stars} (${review.rating}/5)\n`;
     message += `👤 ${authorDisplay}\n`;
-    message += `💬 ${review.review_text}\n`;
+    message += `💬 ${review.review_text}`;
     if (review.suggestions) {
-      message += `💡 ${review.suggestions}\n`;
+      message += `\n💡 ${review.suggestions}`;
     }
-    message += '\n';
-  }
 
-  await sendAdminMessage(chatId, message);
+    const keyboard = {
+      inline_keyboard: [
+        [{ text: '🗑 Удалить', callback_data: `review_search_delete:${review.id}` }],
+      ],
+    };
+
+    await sendAdminMessage(chatId, message, { reply_markup: keyboard });
+  }
 }
 
 // Send new article notification to admin
